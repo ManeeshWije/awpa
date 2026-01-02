@@ -2,3 +2,4 @@
 node_modules
 amazon.json
 *.csv
+dist/

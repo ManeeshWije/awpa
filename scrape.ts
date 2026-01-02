@@ -9,7 +9,7 @@ import "dotenv/config";
 const URL = process.env.URL || "";
 
 const CSV_PATH = path.resolve("prices.csv");
-const DELTA = 10;
+const DELTA = process.env.DELTA ? parseFloat(process.env.DELTA) : 10;
 
 type Product = { title: string; price: number | null };
 
@@ -147,7 +147,7 @@ async function main() {
     if (changes.length) {
         await sendEmail(changes);
     } else {
-        console.log("No price changes >= $10");
+        console.log(`No price changes >= ${DELTA}`);
     }
 
     saveCurrent(products);

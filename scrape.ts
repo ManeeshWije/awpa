@@ -78,7 +78,7 @@ async function sendEmail(changes: Array<{ title: string; before: number; after: 
 
     await transporter.sendMail({
         from: process.env.GMAIL_USER,
-        to: process.env.GMAIL_USER,
+        to: process.env.TO_GMAIL_USER,
         subject: "Wishlist price alert",
         text,
     });

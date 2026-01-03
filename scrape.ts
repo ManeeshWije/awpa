@@ -15,6 +15,7 @@ type Product = {
     id: string;
     title: string;
     price: number | null;
+    link: string;
 };
 
 async function loadAllItems(page: Page) {
@@ -55,17 +56,21 @@ async function scrape(): Promise<Product[]> {
             const id = item.getAttribute("data-itemid") || "";
 
             const priceStr = item.getAttribute("data-price");
+
             const parsed = priceStr ? parseFloat(priceStr) : NaN;
 
-            const title =
-                item.querySelector('[id^="itemName_"]')?.textContent?.trim() || "";
+            const anchor = item?.querySelector('[id^="itemName_"]') as HTMLAnchorElement | null;
+
+            const title = anchor?.textContent?.trim() || "";
+
+            const link = anchor?.href || "";
 
             const price =
                 priceStr && !isNaN(parsed) && isFinite(parsed)
                     ? parsed
                     : null;
 
-            return { id, title, price };
+            return { id, title, price, link };
         })
     );
 
@@ -82,6 +87,7 @@ function loadPrevious(): Record<string, number | null> {
         id: string;
         title: string;
         price: string;
+        link: string;
     }>(text, { columns: true });
 
     const map: Record<string, number | null> = {};
@@ -100,6 +106,7 @@ function saveCurrent(products: Product[]) {
         id: p.id,
         title: p.title,
         price: p.price === null ? "" : p.price,
+        link: p.link
     }));
 
     const csv = stringify(rows, { header: true });
@@ -107,13 +114,14 @@ function saveCurrent(products: Product[]) {
 }
 
 async function sendEmail(
-    changes: Array<{ title: string; before: number; after: number }>
+    changes: Array<{ title: string; link: string; before: number; after: number }>
 ) {
     const transporter = nodemailer.createTransport({
-        service: "gmail",
+        host: "smtp.mailgun.org",
+        port: 587,
         auth: {
-            user: process.env.GMAIL_USER,
-            pass: process.env.GMAIL_PASS,
+            user: process.env.SENDER_EMAIL,
+            pass: process.env.SENDER_PASS
         },
     });
 
@@ -124,13 +132,14 @@ async function sendEmail(
                     2
                 )}\nNew: $${c.after.toFixed(
                     2
-                )}\nChange: $${(c.after - c.before).toFixed(2)}\n`
+                )}\nChange: $${(c.after - c.before).toFixed(2)}\nLink: ${c.link}\n
+`
         )
         .join("\n");
 
     await transporter.sendMail({
-        from: process.env.GMAIL_USER,
-        to: process.env.TO_GMAIL_USER,
+        from: process.env.SENDER_EMAIL,
+        to: process.env.RECEIVER_EMAIL,
         subject: "Wishlist price alert",
         text,
     });
@@ -142,7 +151,7 @@ async function main() {
     const products = await scrape();
     const prev = loadPrevious();
 
-    const changes: Array<{ title: string; before: number; after: number }> = [];
+    const changes: Array<{ title: string; link: string; before: number; after: number }> = [];
 
     for (const p of products) {
         const hadEntryBefore = Object.prototype.hasOwnProperty.call(prev, p.id);
@@ -154,6 +163,7 @@ async function main() {
                 title: p.title,
                 before: 0,
                 after: p.price,
+                link: p.link
             });
             continue;
         }
@@ -166,6 +176,7 @@ async function main() {
                     title: p.title,
                     before: prevPrice,
                     after: p.price,
+                    link: p.link
                 });
             }
         }

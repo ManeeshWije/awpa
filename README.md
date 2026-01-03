@@ -13,3 +13,5 @@ this script also behaves in the following way:
 - if a brand new item is added, it will not alert you (but it will track it for future changes)
 - if an item is removed, it will not alert you (but it will stop tracking it)
 - only if an existing item's price changes by the specified delta will it alert you
+
+deployed as cron job here: https://github.com/ManeeshWije/homelab/blob/main/kubernetes/apps/projects/awpa/helm-release.yaml

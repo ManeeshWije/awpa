@@ -7,8 +7,9 @@ import { stringify } from "csv-stringify/sync";
 import "dotenv/config";
 
 const URL = process.env.URL || "";
-const CSV_PATH = path.resolve("prices.csv");
 const DELTA = process.env.DELTA ? parseFloat(process.env.DELTA) : 10;
+const DATA_PATH = process.env.DATA_PATH || "./";
+const CSV_PATH = path.resolve(DATA_PATH, "prices.csv");
 
 type Product = {
     id: string;

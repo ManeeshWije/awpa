@@ -55,20 +55,29 @@ async function scrape(): Promise<Product[]> {
         items.map((item) => {
             const id = item.getAttribute("data-itemid") || "";
 
-            const priceStr = item.getAttribute("data-price");
-
-            const parsed = priceStr ? parseFloat(priceStr) : NaN;
-
-            const anchor = item?.querySelector('[id^="itemName_"]') as HTMLAnchorElement | null;
-
+            const anchor = item.querySelector('[id^="itemName_"]');
             const title = anchor?.textContent?.trim() || "";
+            const link = (anchor as HTMLAnchorElement)?.href || "";
 
-            const link = anchor?.href || "";
+            // look for availability text
+            const unavailable = item.querySelector(
+                ".a-color-price, .a-size-base.a-color-price"
+            )?.textContent?.toLowerCase() ?? "";
 
-            const price =
-                priceStr && !isNaN(parsed) && isFinite(parsed)
-                    ? parsed
-                    : null;
+            // extract visible price
+            const priceText =
+                item.querySelector(".a-price .a-offscreen")?.textContent?.trim() || "";
+
+            let price: number | null = null;
+
+            if (
+                priceText &&
+                !unavailable.includes("unavailable") &&
+                !unavailable.includes("out of stock")
+            ) {
+                const numeric = parseFloat(priceText.replace(/[^0-9.]/g, ""));
+                if (!isNaN(numeric)) price = numeric;
+            }
 
             return { id, title, price, link };
         })
@@ -133,7 +142,7 @@ async function sendEmail(
                 )}\nNew: $${c.after.toFixed(
                     2
                 )}\nChange: $${(c.after - c.before).toFixed(2)}\nLink: ${c.link}\n
-`
+    `
         )
         .join("\n");
 

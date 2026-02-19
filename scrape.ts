@@ -18,6 +18,22 @@ type Product = {
     link: string;
 };
 
+async function withRetry<T>(fn: () => Promise<T>, retries = 3) {
+    let lastErr;
+
+    for (let i = 0; i < retries; i++) {
+        try {
+            return await fn();
+        } catch (e) {
+            lastErr = e;
+            console.log(`Retry ${i + 1}/${retries}`);
+            await new Promise(r => setTimeout(r, 5000));
+        }
+    }
+
+    throw lastErr;
+}
+
 async function loadAllItems(page: Page) {
     let previousCount = 0;
 
@@ -36,17 +52,26 @@ async function loadAllItems(page: Page) {
 }
 
 async function scrape(): Promise<Product[]> {
-    const browser = await chromium.launch({ headless: true });
+    const browser = await chromium.launch({
+        headless: true,
+        args: [
+            "--no-sandbox",
+            "--disable-setuid-sandbox",
+            "--disable-dev-shm-usage",
+        ],
+    });
 
     const context = await browser.newContext({
         storageState: "amazon.json",
         userAgent:
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        viewport: { width: 1280, height: 800 },
+        locale: "en-CA",
     });
 
     const page = await context.newPage();
 
-    await page.goto(URL, { waitUntil: "networkidle" });
+    await page.goto(URL, { waitUntil: "domcontentloaded", timeout: 60000 });
     await page.waitForSelector("li[data-itemid]", { timeout: 60000 });
 
     await loadAllItems(page);
@@ -157,7 +182,7 @@ async function sendEmail(
 }
 
 async function main() {
-    const products = await scrape();
+    const products = await withRetry(scrape, 3);
     const prev = loadPrevious();
 
     const changes: Array<{ title: string; link: string; before: number; after: number }> = [];

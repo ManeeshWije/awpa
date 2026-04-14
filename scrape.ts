@@ -27,7 +27,7 @@ async function withRetry<T>(fn: () => Promise<T>, retries = 3) {
         } catch (e) {
             lastErr = e;
             console.log(`Retry ${i + 1}/${retries}`);
-            await new Promise(r => setTimeout(r, 5000));
+            await new Promise((r) => setTimeout(r, 5000));
         }
     }
 
@@ -38,7 +38,7 @@ async function loadAllItems(page: Page) {
     let previousCount = 0;
 
     while (true) {
-        const count = await page.$$eval("li[data-itemid]", els => els.length);
+        const count = await page.$$eval("li[data-itemid]", (els) => els.length);
         if (count === previousCount) break;
 
         previousCount = count;
@@ -52,6 +52,12 @@ async function loadAllItems(page: Page) {
 }
 
 async function scrape(): Promise<Product[]> {
+    const storagePath = "amazon.json";
+
+    if (process.env.AMAZON_STORAGE_STATE) {
+        fs.writeFileSync(storagePath, process.env.AMAZON_STORAGE_STATE);
+    }
+
     const browser = await chromium.launch({
         headless: true,
         args: [
@@ -85,13 +91,16 @@ async function scrape(): Promise<Product[]> {
             const link = (anchor as HTMLAnchorElement)?.href || "";
 
             // look for availability text
-            const unavailable = item.querySelector(
-                ".a-color-price, .a-size-base.a-color-price"
-            )?.textContent?.toLowerCase() ?? "";
+            const unavailable =
+                item
+                    .querySelector(".a-color-price, .a-size-base.a-color-price")
+                    ?.textContent?.toLowerCase() ?? "";
 
             // extract visible price
             const priceText =
-                item.querySelector(".a-price .a-offscreen")?.textContent?.trim() || "";
+                item
+                    .querySelector(".a-price .a-offscreen")
+                    ?.textContent?.trim() || "";
 
             let price: number | null = null;
 
@@ -105,7 +114,7 @@ async function scrape(): Promise<Product[]> {
             }
 
             return { id, title, price, link };
-        })
+        }),
     );
 
     await browser.close();
@@ -128,8 +137,7 @@ function loadPrevious(): Record<string, number | null> {
 
     for (const r of rows) {
         const n = parseFloat(r.price);
-        map[r.id] =
-            r.price === "" || isNaN(n) || !isFinite(n) ? null : n;
+        map[r.id] = r.price === "" || isNaN(n) || !isFinite(n) ? null : n;
     }
 
     return map;
@@ -140,7 +148,7 @@ function saveCurrent(products: Product[]) {
         id: p.id,
         title: p.title,
         price: p.price === null ? "" : p.price,
-        link: p.link
+        link: p.link,
     }));
 
     const csv = stringify(rows, { header: true });
@@ -148,14 +156,19 @@ function saveCurrent(products: Product[]) {
 }
 
 async function sendEmail(
-    changes: Array<{ title: string; link: string; before: number; after: number }>
+    changes: Array<{
+        title: string;
+        link: string;
+        before: number;
+        after: number;
+    }>,
 ) {
     const transporter = nodemailer.createTransport({
         host: "smtp.mailgun.org",
         port: 587,
         auth: {
             user: process.env.SENDER_EMAIL,
-            pass: process.env.SENDER_PASS
+            pass: process.env.SENDER_PASS,
         },
     });
 
@@ -163,11 +176,11 @@ async function sendEmail(
         .map(
             (c) =>
                 `${c.title}\nOld: $${c.before.toFixed(
-                    2
+                    2,
                 )}\nNew: $${c.after.toFixed(
-                    2
+                    2,
                 )}\nChange: $${(c.after - c.before).toFixed(2)}\nLink: ${c.link}\n
-    `
+    `,
         )
         .join("\n");
 
@@ -185,7 +198,12 @@ async function main() {
     const products = await withRetry(scrape, 3);
     const prev = loadPrevious();
 
-    const changes: Array<{ title: string; link: string; before: number; after: number }> = [];
+    const changes: Array<{
+        title: string;
+        link: string;
+        before: number;
+        after: number;
+    }> = [];
 
     for (const p of products) {
         const hadEntryBefore = Object.prototype.hasOwnProperty.call(prev, p.id);
@@ -197,7 +215,7 @@ async function main() {
                 title: p.title,
                 before: 0,
                 after: p.price,
-                link: p.link
+                link: p.link,
             });
             continue;
         }
@@ -210,7 +228,7 @@ async function main() {
                     title: p.title,
                     before: prevPrice,
                     after: p.price,
-                    link: p.link
+                    link: p.link,
                 });
             }
         }

@@ -166,6 +166,8 @@ async function sendEmail(
     const transporter = nodemailer.createTransport({
         host: "smtp.mailgun.org",
         port: 587,
+        secure: false,
+        requireTLS: true,
         auth: {
             user: process.env.SENDER_EMAIL,
             pass: process.env.SENDER_PASS,

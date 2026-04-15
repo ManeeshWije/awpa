@@ -167,26 +167,45 @@ async function sendEmail(
     mailer.apiKey = process.env.MAILGUN_API_KEY!;
     mailer.domain = process.env.MAILGUN_DOMAIN!;
     mailer.fromEmail = process.env.SENDER_EMAIL!;
-    mailer.fromTitle = "Amazon Wishlist Alert";
+    mailer.fromTitle = "Maneesh";
+    mailer.unsubscribeLink = false;
 
-    const text = changes
-        .map(
-            (c) =>
-                `${c.title}\nOld: $${c.before.toFixed(
-                    2,
-                )}\nNew: $${c.after.toFixed(
-                    2,
-                )}\nChange: $${(c.after - c.before).toFixed(2)}\nLink: ${c.link}\n
-    `,
-        )
-        .join("\n");
+    // const text = changes
+    //     .map(
+    //         (c) =>
+    //             `${c.title}\nOld: $${c.before.toFixed(
+    //                 2,
+    //             )}\nNew: $${c.after.toFixed(
+    //                 2,
+    //             )}\nChange: $${(c.after - c.before).toFixed(2)}\nLink: ${c.link}\n
+    // `,
+    //     )
+    //     .join("\n");
+    const html = `
+<div style="font-family: Arial, sans-serif; line-height: 1.5;">
+  <h2>Amazon Wishlist Alerts</h2>
+  ${changes
+      .map(
+          (c) => `
+    <div style="margin-bottom: 20px; padding: 10px; border: 1px solid #eee; border-radius: 8px;">
+      <strong>${c.title}</strong><br/>
+      Old: $${c.before.toFixed(2)}<br/>
+      New: $${c.after.toFixed(2)}<br/>
+      Change: $${(c.after - c.before).toFixed(2)}<br/>
+      <a href="${c.link}" target="_blank">View Product</a>
+    </div>
+  `,
+      )
+      .join("")}
+</div>
+`;
 
     mailer.init();
 
     await mailer.send(
         process.env.RECEIVER_EMAIL!,
         "Amazon Wishlist Alert",
-        text,
+        html
     );
 
     console.log("Alert email sent");

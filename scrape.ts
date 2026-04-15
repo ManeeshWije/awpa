@@ -1,10 +1,10 @@
 import { chromium, type Page } from "playwright";
 import fs from "fs";
 import path from "path";
-import nodemailer from "nodemailer";
 import { parse } from "csv-parse/sync";
 import { stringify } from "csv-stringify/sync";
 import "dotenv/config";
+import { NodeMailgun } from "ts-mailgun";
 
 const URL = process.env.URL || "";
 const DELTA = process.env.DELTA ? parseFloat(process.env.DELTA) : 10;
@@ -163,16 +163,11 @@ async function sendEmail(
         after: number;
     }>,
 ) {
-    const transporter = nodemailer.createTransport({
-        host: "smtp.mailgun.org",
-        port: 587,
-        secure: false,
-        requireTLS: true,
-        auth: {
-            user: process.env.SENDER_EMAIL,
-            pass: process.env.SENDER_PASS,
-        },
-    });
+    const mailer = new NodeMailgun();
+    mailer.apiKey = process.env.MAILGUN_API_KEY!;
+    mailer.domain = process.env.MAILGUN_DOMAIN!;
+    mailer.fromEmail = process.env.SENDER_EMAIL!;
+    mailer.fromTitle = "Amazon Wishlist Alert";
 
     const text = changes
         .map(
@@ -186,12 +181,11 @@ async function sendEmail(
         )
         .join("\n");
 
-    await transporter.sendMail({
-        from: process.env.SENDER_EMAIL,
-        to: process.env.RECEIVER_EMAIL,
-        subject: "Wishlist price alert",
+    await mailer.send(
+        process.env.RECEIVER_EMAIL!,
+        "Amazon Wishlist Alert",
         text,
-    });
+    );
 
     console.log("Alert email sent");
 }

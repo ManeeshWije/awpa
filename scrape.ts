@@ -181,6 +181,8 @@ async function sendEmail(
         )
         .join("\n");
 
+    mailer.init();
+
     await mailer.send(
         process.env.RECEIVER_EMAIL!,
         "Amazon Wishlist Alert",
